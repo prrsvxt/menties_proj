@@ -1,17 +1,21 @@
+from uuid import UUID
+
 from src.repositories.user_repository import UserRepository
+from src.mappers.user_mapper import UserMapper
 from src.schemas.user import UserCreate, UserUpdate
 from src.models.users import UserModel
+from src.errors.user_errors import UserNotFoundError, UserAlreadyExistsError
 
 
 class UserService:
     def __init__(self, repository: UserRepository):
         self.repository = repository
 
-    async def get_user_by_id(self, user_id: int) -> UserModel:
+    async def get_user_by_id(self, user_id: UUID) -> UserModel:
         user = await self.repository.get_user_by_id(user_id)
 
         if user is None:
-            raise ValueError('User doesn\'t exist')
+            raise UserNotFoundError('User not found')
 
         return user
 
@@ -19,17 +23,27 @@ class UserService:
         user = await self.repository.get_user_by_username(username)
     
         if user is None:
-            raise ValueError('User doesn\'t exist')
+            raise UserNotFoundError('User not found')
     
         return user
 
     async def create_user(self, data: UserCreate) -> UserModel:
-        return await self.repository.create_user(data)
+        exitsting_user = await self.repository.get_user_by_username(data.username)
 
-    async def update_user(self, user_id: int, data: UserUpdate) -> UserModel:
-        return await self.repository.update_user(user_id, data)
+        if exitsting_user is not None:
+            raise UserAlreadyExistsError('User Already Exists')
+        
+        user_data = UserMapper.user_create_map(data)
+        return await self.repository.create_user(user_data)
 
-    async def delete_user(self, user_id: int) -> None:
-        await self.repository.delete_user(user_id)
+    async def update_user(self, user_id: UUID, data: UserUpdate) -> UserModel:
+        user = await self.get_user_by_id(user_id=user_id)
+        user = UserMapper.user_update_map(data, user)
+
+        return await self.repository.update_user(user)
+
+    async def delete_user(self, user_id: UUID) -> None:
+        user = await self.get_user_by_id(user_id)
+        await self.repository.delete_user(user)
 
     

@@ -1,34 +1,31 @@
-from pydantic import BaseModel, EmailStr, SecretStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
+from uuid import UUID
 
+from src.enums.user_enums import UserRole
 
-class UserSchema(BaseModel):
-    id: int
+class BaseUser(BaseModel):
     username: str
     email: EmailStr | None
-    password: SecretStr
+
+class UserSchema(BaseUser):
+    id: UUID
     created_at: datetime
-    updated_at: datetime
-    is_actice: bool
+    user_role: UserRole
+    updated_at: datetime | None
+    is_active: bool
 
     model_config = ConfigDict(
         from_attributes=True,
     )
 
+class UserCreate(BaseUser): ...
 
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr | None
-    password: str
+class UserUpdate(BaseUser):
+    user_role: UserRole | None 
 
-class UserUpdate(BaseModel):
-    username: str | None
-    email: EmailStr | None
-    password: str | None
-
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: EmailStr | None
+class UserResponse(BaseUser):
+    id: UUID
+    user_role: UserRole
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None
