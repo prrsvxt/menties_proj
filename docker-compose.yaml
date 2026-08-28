@@ -13,6 +13,18 @@ services:
       timeout: 5s
       retries: 10
   
+  migrations:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: alembic upgrade head
+    restart: "no"
+
   app:
     build:
       context: .
@@ -20,7 +32,7 @@ services:
     env_file:
       - .env
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     ports:
       - 8000:8000

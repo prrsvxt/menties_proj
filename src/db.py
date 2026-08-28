@@ -17,7 +17,11 @@ SessionFactory = async_sessionmaker(
     expire_on_commit=False,
 )
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_transactional_session() -> AsyncGenerator[AsyncSession, None]:
     async with SessionFactory() as session:
         async with session.begin():
             yield session
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with SessionFactory() as session:
+        yield session

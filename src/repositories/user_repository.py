@@ -13,14 +13,6 @@ class UserRepository:
             UserModel.id == user_id,
             UserModel.is_deleted == False
         )
-        result = await self.session.scalar(stmt)
-        return result
-
-    async def get_user_by_username(self, username: str) -> UserModel | None:
-        stmt = select(UserModel).where(
-            UserModel.username == username,
-            UserModel.is_deleted == False
-        )
         result = await self.session.execute(stmt)
         result = result.scalar_one_or_none()
         return result

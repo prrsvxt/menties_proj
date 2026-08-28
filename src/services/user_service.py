@@ -1,49 +1,52 @@
 from uuid import UUID
+import logging
 
 from src.repositories.user_repository import UserRepository
 from src.mappers.user_mapper import UserMapper
-from src.schemas.user import UserCreate, UserUpdate
+from src.schemas.user import UserCreate, UserUpdate, UserResponse
+from src.exceptions.general_errors import NotFoundError
 from src.models.users import UserModel
-from src.errors.user_errors import UserNotFoundError, UserAlreadyExistsError
 
+logger = logging.getLogger(__name__)
 
 class UserService:
     def __init__(self, repository: UserRepository):
         self.repository = repository
+        self.mapper = UserMapper()
 
-    async def get_user_by_id(self, user_id: UUID) -> UserModel:
+    async def _get_user_by_id(self, user_id: UUID) -> UserModel:
         user = await self.repository.get_user_by_id(user_id)
 
         if user is None:
-            raise UserNotFoundError('User not found')
+            raise NotFoundError(f"User with ID={user_id} not found")
 
         return user
 
-    async def get_user_by_username(self, username: str) -> UserModel:
-        user = await self.repository.get_user_by_username(username)
-    
+    async def get_user_by_id(self, user_id: UUID) -> UserResponse:
+        user = await self.repository.get_user_by_id(user_id)
+
         if user is None:
-            raise UserNotFoundError('User not found')
-    
-        return user
+            raise NotFoundError(f'User with ID={user_id} not found')
 
-    async def create_user(self, data: UserCreate) -> UserModel:
-        exitsting_user = await self.repository.get_user_by_username(data.username)
+        return self.mapper.user_response_map(user)
 
-        if exitsting_user is not None:
-            raise UserAlreadyExistsError('User Already Exists')
-        
-        user_data = UserMapper.user_create_map(data)
-        return await self.repository.create_user(user_data)
+    async def create_user(self, data: UserCreate) -> UserResponse: 
+        user_data = self.mapper.user_create_map(data)
+        user = await self.repository.create_user(user_data)
+        logger.info('User created user_id=%s', user.id)
+        return self.mapper.user_response_map(user)
 
-    async def update_user(self, user_id: UUID, data: UserUpdate) -> UserModel:
-        user = await self.get_user_by_id(user_id=user_id)
-        user = UserMapper.user_update_map(data, user)
+    async def update_user(self, user_id: UUID, data: UserUpdate) -> UserResponse:
+        user = await self._get_user_by_id(user_id=user_id)
+        user = self.mapper.user_update_map(data, user)
 
-        return await self.repository.update_user(user)
+        user = await self.repository.update_user(user)
+        logger.info('User updated user_id=%s', user.id)
+        return self.mapper.user_response_map(user)
 
     async def delete_user(self, user_id: UUID) -> None:
-        user = await self.get_user_by_id(user_id)
+        user = await self._get_user_by_id(user_id)
         await self.repository.delete_user(user)
+        logger.info('User deleted user_id=%s', user.id)
 
     

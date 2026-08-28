@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
 
-from src.enums.user_enums import UserRole
+from src.models.enums.user_enums import UserRole
 
 metadata = sa.MetaData()
 
