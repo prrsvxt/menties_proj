@@ -1,8 +1,9 @@
-from fastapi import Request
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 import logging
 
 from .general_errors import NotFoundError
+from src.schemas.errors import ErrorResponse
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,12 @@ async def not_found_error_handler(
         request.url.path,
         str(exc)
     )
+
+    content = ErrorResponse(
+        detail=str(exc)
+    )
     
     return JSONResponse(
-        status_code=404,
-        content={'detail': str(exc)}
+        status_code=status.HTTP_404_NOT_FOUND,
+        content=content.model_dump()
     )
