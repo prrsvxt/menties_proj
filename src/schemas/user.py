@@ -6,14 +6,13 @@ from src.models.enums.user_enums import UserRole
 
 class BaseUser(BaseModel):
     username: str = Field(min_length=3)
-    email: EmailStr | None = Field(min_length=5)
+    email: EmailStr | None = None
 
 class UserSchema(BaseUser):
     id: UUID
-    created_at: datetime
     user_role: UserRole
     updated_at: datetime | None
-    is_active: bool
+    is_deleted: bool
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -22,12 +21,13 @@ class UserSchema(BaseUser):
 class UserCreate(BaseUser): ...
 
 class UserUpdate(BaseUser):
+    username: str | None = None
+    email: EmailStr | None = None
     user_role: UserRole | None = Field(default=UserRole.USER)
 
 class UserResponse(BaseUser):
     id: UUID
     user_role: UserRole
-    created_at: datetime
     updated_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)

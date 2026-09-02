@@ -3,9 +3,11 @@ import logging
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.router.v1.router import router_v1
-from src.exceptions.exception_handlers import not_found_error_handler
+from src.lifespan import lifespan
+from src.exceptions.exception_handlers import not_found_error_handler, sql_alchemy_error_handler
 from src.exceptions.general_errors import NotFoundError
 from src.logging_config import setup_logging
 
@@ -16,13 +18,12 @@ def get_app() -> FastAPI:
     try:
         setup_logging()
         logger.info('Starting application initialization')
-
         app = FastAPI(
+            lifespan=lifespan,
             docs_url='/docs',
             openapi_url='/openapi.json',
             default_response_class=JSONResponse,
         )
-
         logger.info('FastAPI app instance created')
 
         logger.info('Configuring middleware')
@@ -38,6 +39,10 @@ def get_app() -> FastAPI:
         app.add_exception_handler(
             NotFoundError,
             not_found_error_handler
+        )
+        app.add_exception_handler(
+            SQLAlchemyError,
+            sql_alchemy_error_handler
         )
 
         logger.info('Including application routers')
