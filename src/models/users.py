@@ -1,23 +1,10 @@
 import sqlalchemy as sa
-from sqlalchemy.orm import DeclarativeMeta, Mapped, declarative_base, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from uuid import UUID, uuid4
-from enum import Enum
 
 from src.models.enums.user_enums import UserRole
-
-metadata = sa.MetaData()
-
-
-class BaseServiceModel:
-    """Базовый класс для таблиц сервиса."""
-
-    @classmethod
-    def on_conflict_constraint(cls) -> tuple | None:
-        return None
-
-
-Base: DeclarativeMeta = declarative_base(metadata=metadata, cls=BaseServiceModel)
+from src.models.base import Base
 
 class UserModel(Base):
     __tablename__ = 'users'
@@ -34,3 +21,4 @@ class UserModel(Base):
 
     is_deleted: Mapped[bool] = mapped_column(sa.Boolean(), default=False)
     
+    access_granted: Mapped[list['AccessGrant']] = relationship(back_populates='user')
