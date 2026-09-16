@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import String, DateTime, func, ForeignKey, ARRAY, Enum
-from uuid import uuid4, UUID
-from datetime import datetime
+from uuid import UUID
+from datetime import datetime, timezone
 
 from src.models.base import Base
 from src.models.enums.access import AccessTypes, AccessStatus
@@ -10,7 +10,6 @@ from src.models.enums.access import AccessTypes, AccessStatus
 class AccessGrant(Base):
     __tablename__ = "access_grant"
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     resource: Mapped[str] = mapped_column(String(50))
     scope: Mapped[list[AccessTypes]] = mapped_column(
             ARRAY(Enum(AccessTypes, name='accesstype')),
@@ -25,3 +24,9 @@ class AccessGrant(Base):
 
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), nullable=False)
     user: Mapped['UserModel'] = relationship(back_populates='access_granted')
+
+    def revoke(self, revoked_at: datetime | None = None) -> None:
+        self.status = AccessStatus.REVOKED
+
+        if self.revoked_at is None:
+            self.revoked_at = revoked_at or datetime.now(timezone.utc)

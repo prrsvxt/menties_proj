@@ -18,7 +18,7 @@ class UserRepository:
             .options(selectinload(UserModel.access_granted))
             .where(
                 UserModel.id == user_id,
-                UserModel.is_deleted == False,
+                UserModel.deleted_at.is_(None),
             )
         )   
         result = await self.session.execute(stmt)
@@ -32,19 +32,14 @@ class UserRepository:
         return user
         
     async def delete_user(self, user: UserModel) -> None:
-        user.is_deleted = True
+        deleted_at = datetime.now(timezone.utc)
+        user.deleted_at = deleted_at
 
-        await self.session.execute(
-            update(AccessGrant)
-            .where(AccessGrant.user_id == user.id)
-            .values(
-                status=AccessStatus.REVOKED,
-                revoked_at=datetime.now(timezone.utc),
-            )
-        )
+        for access in user.access_granted:
+            access.revoke(deleted_at)
+            access_deleted_at = deleted_at
         
         await self.session.flush()
-        await self.session.refresh(user)
 
     async def update_user(self, user: UserModel) -> UserModel:
         await self.session.flush()

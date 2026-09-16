@@ -1,6 +1,8 @@
 from src.schemas.user import UserCreate, UserUpdate, UserResponse
 from src.models.users import UserModel
 from src.models.access_grant import AccessGrant
+from src.schemas.access_grant import AccessGrantCreate
+from src.models.enums.access import AccessStatus
 
 
 class UserMapper:
@@ -9,8 +11,8 @@ class UserMapper:
         return UserModel(
             **data.model_dump(exclude={'access_granted'}),
             access_granted=[
-                AccessGrant(**grant.model_dump())
-                for grant in data.access_granted
+                self.access_grant_map(access)
+                for access in data.access_granted
             ]
         )
 
@@ -22,7 +24,7 @@ class UserMapper:
 
         if data.access_granted_to_add is not None:
             user.access_granted.extend(
-                AccessGrant(**access.model_dump())
+                self.access_grant_map(access)
                 for access in data.access_granted_to_add
             )
         
@@ -32,3 +34,11 @@ class UserMapper:
  
     def user_response_map(self, data: UserModel) -> UserResponse:
         return UserResponse.model_validate(data)
+
+    def access_grant_map(self, data: AccessGrantCreate) -> AccessGrant:
+        access = AccessGrant(**data.model_dump())
+
+        if access.status == AccessStatus.REVOKED:
+            access.revoke()
+
+        return access

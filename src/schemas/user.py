@@ -13,7 +13,7 @@ class UserSchema(BaseUser):
     id: UUID
     user_role: UserRole
     updated_at: datetime | None
-    is_deleted: bool
+    deleted_at: datetime | None
 
     model_config = ConfigDict(
         from_attributes=True,

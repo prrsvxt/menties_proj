@@ -6,7 +6,6 @@ from src.mappers.user_mapper import UserMapper
 from src.schemas.user import UserCreate, UserUpdate, UserResponse
 from src.exceptions.general_errors import NotFoundError
 from src.models.users import UserModel
-from src.models.access_grant import AccessGrant
 
 logger = logging.getLogger(__name__)
 
