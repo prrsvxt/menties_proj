@@ -37,7 +37,7 @@ class UserRepository:
 
         for access in user.access_granted:
             access.revoke(deleted_at)
-            access_deleted_at = deleted_at
+            access.deleted_at = deleted_at
         
         await self.session.flush()
 
