@@ -1,12 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, update
+from sqlalchemy import select
 from uuid import UUID
 from datetime import datetime, timezone
 
 from src.models.users import UserModel
-from src.models.access_grant import AccessGrant
-from src.models.enums.access import AccessStatus
 
 class UserRepository:
     def __init__(self, db: AsyncSession):
