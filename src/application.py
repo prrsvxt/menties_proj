@@ -8,8 +8,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.router.v1.router import router_v1
 from src.lifespan import lifespan
 from src.exceptions.handlers.general import not_found_error_handler
-from src.exceptions.handlers.database import sql_alchemy_error_handler
-from src.exceptions.general_errors import NotFoundError
+from src.exceptions.handlers.database import sql_alchemy_error_handler, conflict_error_handler
+from src.exceptions.general_errors import NotFoundError, ConflictError
 from src.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,10 @@ def get_app() -> FastAPI:
         app.add_exception_handler(
             SQLAlchemyError,
             sql_alchemy_error_handler
+        )
+        app.add_exception_handler(
+            ConflictError,
+            conflict_error_handler
         )
 
         logger.info('Including application routers')

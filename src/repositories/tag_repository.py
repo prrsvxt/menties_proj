@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select
 from datetime import datetime, timezone
 from uuid import UUID
@@ -25,11 +26,27 @@ class TagRepository(Repository):
         return result
 
     async def create_tag(self, tag: Tag) -> Tag:
-        self.session.add(tag)
+        values = {
+            column.name: getattr(tag, column.name)
+            for column in tag.__table__.columns
+            if getattr(tag, column.name) is not None
+        }
+
+        stmt = (
+            insert(Tag)
+            .values(values)
+            .on_conflict_do_nothing()
+            .returning(Tag)
+        )
+
+        tag = (await self.session.execute(stmt)).scalar_one_or_none()
         await self.session.flush()
         return tag
 
     async def update_tag(self, tag: Tag) -> Tag:
+        lock_id = self.get_lock_key(tag.id)
+
+        await self.acquire_advisory_lock(lock_id)
         await self.session.flush()
         return tag
 

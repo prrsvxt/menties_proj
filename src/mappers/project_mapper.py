@@ -1,4 +1,9 @@
-from src.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from src.schemas.project import (
+    ProjectCreate,
+    ProjectPaginationResponse,
+    ProjectResponse,
+    ProjectUpdate,
+)
 from src.models.project import Project
 from src.models.tag import Tag
 
@@ -36,3 +41,19 @@ class ProjectMapper:
 
         project.tags = tags
         return project
+
+    def multiple_projects_response_map(
+            self,
+            projects: list[Project]
+    ) -> list[ProjectResponse]:
+        return [self.project_response_map(project) for project in projects]
+
+    def project_pagination_response_map(
+            self,
+            projects: list[Project],
+            next_cursor: str | None,
+    ) -> ProjectPaginationResponse:
+        return ProjectPaginationResponse(
+            items=self.multiple_projects_response_map(projects),
+            next_cursor=next_cursor,
+        )

@@ -1,6 +1,11 @@
 from src.models.workspace import WorkspaceModel
 from src.models.workspace_settings import WorkspaceSettingsModel
-from src.schemas.workspace import WorkspaceCreate, WorkspaceResponse, WorkspaceUpdate
+from src.schemas.workspace import (
+    WorkspaceCreate, 
+    WorkspaceResponse, 
+    WorkspaceUpdate,
+    WorkspacePaginationResponse,
+)
 from src.schemas.workspace_settings import WorkspaceSettingsCreate
 
 
@@ -44,3 +49,22 @@ class WorkspaceMapper:
     # получить объект из модели, преобразовать его в схему.
     def workspace_response_map(self, data: WorkspaceModel) -> WorkspaceResponse:
         return WorkspaceResponse.model_validate(data, from_attributes=True)
+
+    def multiple_workspaces_response_map(
+            self, 
+            data: list[WorkspaceModel]
+    ) -> list[WorkspaceResponse]:
+        return [
+            self.workspace_response_map(workspace)
+            for workspace in data
+        ]
+
+    def workspace_pagination_response_map(
+            self,
+            data: list[WorkspaceResponse],
+            cursor: str | None
+    ):
+        return WorkspacePaginationResponse(
+            items=self.multiple_workspaces_response_map(data),
+            next_cursor=cursor
+        )

@@ -3,7 +3,12 @@ import logging
 
 from src.exceptions.general_errors import NotFoundError
 from src.repositories.workspace_repository import WorkspaceRepository
-from src.schemas.workspace import WorkspaceCreate, WorkspaceResponse, WorkspaceUpdate
+from src.schemas.workspace import (
+    WorkspaceCreate, 
+    WorkspaceResponse, 
+    WorkspaceUpdate,
+    WorkspacePaginationResponse
+)
 from src.models.workspace import WorkspaceModel
 from src.mappers.workspace_mapper import WorkspaceMapper
 
@@ -30,16 +35,13 @@ class WorkspaceService:
     async def list_workspaces(
             self,
             limit: int,
-            offset: int,
-    ) -> list[WorkspaceResponse]:
-        workspaces = await self.repository.get_paginated_workspaces(
+            cursor: str | None, 
+    ) -> WorkspacePaginationResponse:
+        workspaces, new_cursor = await self.repository.get_paginated_workspaces(
             limit=limit,
-            offset=offset,
+            cursor=cursor,
         )
-        return [
-            self.mapper.workspace_response_map(workspace)
-            for workspace in workspaces
-        ]
+        return self.mapper.workspace_pagination_response_map(workspaces, new_cursor)
     
     async def create_workspace(self, data: WorkspaceCreate) -> WorkspaceResponse:
         workspace_data = self.mapper.workspace_create_map(data)

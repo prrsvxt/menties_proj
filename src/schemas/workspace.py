@@ -31,3 +31,7 @@ class WorkspaceResponse(BaseModel):
     workspace_settings: WorkspaceSettingsResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+class WorkspacePaginationResponse(BaseModel):
+    items: list[WorkspaceResponse]
+    next_cursor: str | None = None

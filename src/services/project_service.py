@@ -1,7 +1,12 @@
 import logging
 from uuid import UUID
 
-from src.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
+from src.schemas.project import (
+    ProjectCreate,
+    ProjectPaginationResponse,
+    ProjectResponse,
+    ProjectUpdate,
+)
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.tag_repository import TagRepository
 from src.mappers.project_mapper import ProjectMapper
@@ -43,15 +48,17 @@ class ProjectService:
     async def list_projects(
             self,
             limit: int,
-            offset: int
-    ) -> list[ProjectResponse]:
-        projects = await self.project_repository.get_paginated_projects(
+            cursor: str | None
+    ) -> ProjectPaginationResponse:
+        projects, next_cursor = await self.project_repository.get_paginated_projects(
             limit=limit,
-            offset=offset
+            cursor=cursor
         )
 
-        projects = [self.mapper.project_response_map(project) for project in projects]
-        return projects
+        return self.mapper.project_pagination_response_map(
+            projects,
+            next_cursor,
+        )
 
     async def create_project(
             self,

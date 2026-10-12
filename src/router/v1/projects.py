@@ -6,7 +6,11 @@ from src.dependencies.project_deps import (
     GetProjectService,
     TransactionalProjectService,
 )
-from src.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from src.schemas.project import (
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
+    ProjectPaginationResponse)
 
 
 router = APIRouter(
@@ -17,15 +21,15 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[ProjectResponse],
+    response_model=ProjectPaginationResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_projects(
         service: GetProjectService,
         limit: int = Query(default=10, ge=1, le=100),
-        offset: int = Query(default=0, ge=0),
+        cursor: str | None = Query(default=None),
 ):
-    return await service.list_projects(limit=limit, offset=offset)
+    return await service.list_projects(limit=limit, cursor=cursor)
 
 
 @router.get(

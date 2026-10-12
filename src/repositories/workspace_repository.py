@@ -1,14 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_ 
 from sqlalchemy.orm import selectinload
+
 from uuid import UUID
 from datetime import timezone, datetime
 
 from src.models.workspace import WorkspaceModel
+from src.repositories.repository import Repository
 
-class WorkspaceRepository:
+class WorkspaceRepository(Repository):
     def __init__(self, db: AsyncSession):
-        self.session = db
+        super().__init__(db)
 
     async def get_workspace_by_id(self, workspace_id: UUID) -> WorkspaceModel | None:
         stmt = (
@@ -25,18 +27,42 @@ class WorkspaceRepository:
     async def get_paginated_workspaces(
             self,
             limit: int,
-            offset: int,
-    ) -> list[WorkspaceModel]:
+            cursor: str | None,
+    ) -> tuple[list[WorkspaceModel], str | None]:
+
+        conditions = [
+            WorkspaceModel.deleted_at.is_(None),
+        ]
+
+        if cursor:
+            cursor_workspace_id, cursor_timestamp = self.cursor_decode(cursor)
+
+            conditions.append(
+                or_(
+                    WorkspaceModel.created_at > cursor_timestamp,
+                    and_(
+                        WorkspaceModel.created_at == cursor_timestamp,
+                        WorkspaceModel.id > cursor_workspace_id
+                    )
+                )
+            )
+        
         stmt = (
             select(WorkspaceModel)
             .options(selectinload(WorkspaceModel.workspace_settings))
-            .where(WorkspaceModel.deleted_at.is_(None))
+            .where(*conditions)
             .order_by(WorkspaceModel.created_at, WorkspaceModel.id)
-            .limit(limit)
-            .offset(offset)
+            .limit(limit + 1)
         )
         result = (await self.session.execute(stmt)).scalars().all()
-        return result
+
+        next_cursor = None
+        if len(result) > limit:
+            last_workspace = result[limit - 1]
+            result = result[:limit]
+            next_cursor = self.cursor_encode(last_workspace)
+
+        return result, next_cursor
 
     async def create_workspace(
             self, 

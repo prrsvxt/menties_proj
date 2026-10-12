@@ -31,3 +31,8 @@ class ProjectResponse(BaseModel):
     tags: list[TagResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectPaginationResponse(BaseModel):
+    items: list[ProjectResponse]
+    next_cursor: str | None = None

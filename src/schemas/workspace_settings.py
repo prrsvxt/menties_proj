@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from src.exceptions.general_errors import InvalidTimezoneError
+
 
 class WorkspaceSettingsCreate(BaseModel):
     timezone: str = Field(default='UTC')
@@ -13,7 +15,7 @@ class WorkspaceSettingsCreate(BaseModel):
         try: 
             ZoneInfo(value)
         except ZoneInfoNotFoundError:
-            raise ValueError('Некорректный часовой пояс')
+            raise InvalidTimezoneError
         return value
 
 
@@ -31,7 +33,7 @@ class WorkspaceSettingsUpdate(BaseModel):
         try:
             ZoneInfo(value)
         except ZoneInfoNotFoundError:
-            raise ValueError('Некорректный часовой пояс')
+            raise InvalidTimezoneError
         return value
 
 

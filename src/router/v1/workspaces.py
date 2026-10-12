@@ -2,7 +2,12 @@ from fastapi import APIRouter, Query, status
 from uuid import UUID
 
 from src.dependencies.workspace_deps import GetWorkspaceService, TransactionalWorkspaceService
-from src.schemas.workspace import WorkspaceResponse, WorkspaceCreate, WorkspaceUpdate
+from src.schemas.workspace import (
+    WorkspaceResponse, 
+    WorkspaceCreate, 
+    WorkspaceUpdate, 
+    WorkspacePaginationResponse
+)
 
 
 router = APIRouter(
@@ -13,15 +18,15 @@ router = APIRouter(
 
 @router.get(
     '/',
-    response_model=list[WorkspaceResponse],
+    response_model=WorkspacePaginationResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_workspaces(
     service: GetWorkspaceService,
     limit: int = Query(default=10, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    cursor: str | None = None,
 ):
-    return await service.list_workspaces(limit=limit, offset=offset)
+    return await service.list_workspaces(limit=limit, cursor=cursor)
 
 @router.get(
     '/{workspace_id}', 
