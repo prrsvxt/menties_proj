@@ -12,11 +12,12 @@ from src.repositories.tag_repository import TagRepository
 from src.mappers.project_mapper import ProjectMapper
 from src.models.project import Project
 from src.exceptions.general_errors import NotFoundError
+from src.services.service import Service
 
 
 logger = logging.getLogger(__name__)
 
-class ProjectService:
+class ProjectService(Service):
     def __init__(
             self, 
             project_repository: ProjectRepository, 
@@ -50,10 +51,21 @@ class ProjectService:
             limit: int,
             cursor: str | None
     ) -> ProjectPaginationResponse:
-        projects, next_cursor = await self.project_repository.get_paginated_projects(
+        cursor_project_id, cursor_timestamp = None, None
+        if cursor:
+            cursor_project_id, cursor_timestamp = self.cursor_decode(cursor)
+
+        projects = await self.project_repository.get_paginated_projects(
             limit=limit,
-            cursor=cursor
+            cursor_project_id=cursor_project_id,
+            cursor_timestamp=cursor_timestamp,
         )
+
+        next_cursor = None
+        if len(projects) > limit:
+            last_project = projects[limit - 1]
+            projects = projects[:limit]
+            next_cursor = self.cursor_encode(last_project)
 
         return self.mapper.project_pagination_response_map(
             projects,
@@ -74,7 +86,10 @@ class ProjectService:
             project_id: UUID,
             data: ProjectUpdate
     ) -> ProjectResponse:
-        project = await self._get_project_by_id(project_id)
+        project = await self.project_repository.get_project_for_update(project_id)
+
+        if project is None:
+            raise NotFoundError(f'Project with ID={project_id} not found')
 
         if data.tag_ids is None:
             tags = project.tags

@@ -9,6 +9,8 @@ from src.models.workspace import WorkspaceModel
 from src.repositories.repository import Repository
 
 class WorkspaceRepository(Repository):
+    LOCK_NAMESPACE = 'workspace'
+
     def __init__(self, db: AsyncSession):
         super().__init__(db)
 
@@ -24,19 +26,28 @@ class WorkspaceRepository(Repository):
         result = (await self.session.execute(stmt)).scalar_one_or_none()
         return result
 
+    async def get_workspace_for_update(
+            self,
+            workspace_id: UUID,
+    ) -> WorkspaceModel | None:
+        lock_id = self.get_lock_key(self.LOCK_NAMESPACE, workspace_id)
+        await self.acquire_advisory_lock(lock_id)
+
+        workspace = await self.get_workspace_by_id(workspace_id)
+        return workspace
+
     async def get_paginated_workspaces(
             self,
             limit: int,
-            cursor: str | None,
-    ) -> tuple[list[WorkspaceModel], str | None]:
+            cursor_workspace_id: UUID | None,
+            cursor_timestamp: datetime | None,
+    ) -> list[WorkspaceModel]:
 
         conditions = [
             WorkspaceModel.deleted_at.is_(None),
         ]
 
-        if cursor:
-            cursor_workspace_id, cursor_timestamp = self.cursor_decode(cursor)
-
+        if cursor_workspace_id and cursor_timestamp:
             conditions.append(
                 or_(
                     WorkspaceModel.created_at > cursor_timestamp,
@@ -56,13 +67,7 @@ class WorkspaceRepository(Repository):
         )
         result = (await self.session.execute(stmt)).scalars().all()
 
-        next_cursor = None
-        if len(result) > limit:
-            last_workspace = result[limit - 1]
-            result = result[:limit]
-            next_cursor = self.cursor_encode(last_workspace)
-
-        return result, next_cursor
+        return result
 
     async def create_workspace(
             self, 

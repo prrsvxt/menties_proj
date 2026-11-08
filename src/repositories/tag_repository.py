@@ -9,6 +9,8 @@ from src.models.tag import Tag
 
 
 class TagRepository(Repository):
+    LOCK_NAMESPACE = 'tag'
+
     def __init__(self, db: AsyncSession):
         super().__init__(db)
 
@@ -19,6 +21,13 @@ class TagRepository(Repository):
         stmt = select(Tag).where(Tag.id == tag_id, Tag.deleted_at.is_(None))
         result = (await self.session.execute(stmt)).scalar_one_or_none()
         return result
+
+    async def get_tag_for_update(self, tag_id: UUID) -> Tag | None:
+        lock_id = self.get_lock_key(self.LOCK_NAMESPACE, tag_id)
+        await self.acquire_advisory_lock(lock_id)
+
+        tag = await self.get_tag_by_id(tag_id)
+        return tag
 
     async def get_tags_by_ids(self, tag_ids: list[UUID]) -> list[Tag]:
         stmt = select(Tag).where(Tag.id.in_(tag_ids), Tag.deleted_at.is_(None))
@@ -44,9 +53,6 @@ class TagRepository(Repository):
         return tag
 
     async def update_tag(self, tag: Tag) -> Tag:
-        lock_id = self.get_lock_key(tag.id)
-
-        await self.acquire_advisory_lock(lock_id)
         await self.session.flush()
         return tag
 

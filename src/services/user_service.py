@@ -6,10 +6,11 @@ from src.mappers.user_mapper import UserMapper
 from src.schemas.user import UserCreate, UserUpdate, UserResponse
 from src.exceptions.general_errors import NotFoundError
 from src.models.users import UserModel
+from src.services.service import Service
 
 logger = logging.getLogger(__name__)
 
-class UserService:
+class UserService(Service):
     def __init__(self, repository: UserRepository, mapper: UserMapper):
         self.repository = repository
         self.mapper = mapper
@@ -34,7 +35,11 @@ class UserService:
         return self.mapper.user_response_map(user)
 
     async def update_user(self, user_id: UUID, data: UserUpdate) -> UserResponse:
-        user = await self._get_user_by_id(user_id=user_id)
+        user = await self.repository.get_user_for_update(user_id=user_id)
+
+        if user is None:
+            raise NotFoundError(f'User with ID={user_id} not found')
+
         user = self.mapper.user_update_map(data, user)
 
         user = await self.repository.update_user(user)
@@ -43,5 +48,3 @@ class UserService:
     async def delete_user(self, user_id: UUID) -> None:
         user = await self._get_user_by_id(user_id)
         await self.repository.delete_user(user)
-
-    

@@ -14,6 +14,8 @@ from src.models.tag import Tag
 
 
 class ProjectRepository(Repository):
+    LOCK_NAMESPACE = 'project'
+
     def __init__(self, db: AsyncSession):
         super().__init__(db)
 
@@ -30,18 +32,25 @@ class ProjectRepository(Repository):
 
         return result
 
+    async def get_project_for_update(self, project_id: UUID) -> Project | None:
+        lock_id = self.get_lock_key(self.LOCK_NAMESPACE, project_id)
+        await self.acquire_advisory_lock(lock_id)
+
+        project = await self.get_project_by_id(project_id)
+        return project
+
     async def get_paginated_projects(
             self,
             limit: int,
-            cursor: str | None
-    ) -> tuple[list[Project], str | None]:
+            cursor_project_id: UUID | None,
+            cursor_timestamp: datetime | None
+    ) -> list[Project]:
 
         conditions = [
             Project.deleted_at.is_(None),
         ]
 
-        if cursor:
-            cursor_project_id, cursor_timestamp = self.cursor_decode(cursor)
+        if cursor_project_id and cursor_timestamp:
 
             conditions.append(
                 or_(
@@ -69,13 +78,7 @@ class ProjectRepository(Repository):
 
         result = (await self.session.execute(stmt)).scalars().all()
 
-        next_cursor = None
-        if len(result) > limit:
-            last_project = result[limit - 1]
-            result = result[:limit]
-            next_cursor = self.cursor_encode(last_project)
-
-        return result, next_cursor
+        return result
 
     async def create_project(self, project: Project) -> Project:
 
@@ -120,9 +123,6 @@ class ProjectRepository(Repository):
         return project
 
     async def update_project(self, project: Project) -> Project:
-        lock_id = self.get_lock_key(project.id)
-
-        await self.acquire_advisory_lock(lock_id)
         await self.session.flush()
         return project
 

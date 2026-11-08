@@ -11,10 +11,11 @@ from src.schemas.workspace import (
 )
 from src.models.workspace import WorkspaceModel
 from src.mappers.workspace_mapper import WorkspaceMapper
+from src.services.service import Service
 
 logger = logging.getLogger(__name__)
 
-class WorkspaceService:
+class WorkspaceService(Service):
     def __init__(self, repository: WorkspaceRepository, mapper: WorkspaceMapper):
         self.repository = repository
         self.mapper = mapper
@@ -37,11 +38,23 @@ class WorkspaceService:
             limit: int,
             cursor: str | None, 
     ) -> WorkspacePaginationResponse:
-        workspaces, new_cursor = await self.repository.get_paginated_workspaces(
+        cursor_workspace_id, cursor_timestamp = None, None
+        if cursor:
+            cursor_workspace_id, cursor_timestamp = self.cursor_decode(cursor)
+
+        workspaces = await self.repository.get_paginated_workspaces(
             limit=limit,
-            cursor=cursor,
+            cursor_workspace_id=cursor_workspace_id,
+            cursor_timestamp=cursor_timestamp,
         )
-        return self.mapper.workspace_pagination_response_map(workspaces, new_cursor)
+
+        next_cursor = None
+        if len(workspaces) > limit:
+            last_workspace = workspaces[limit - 1]
+            workspaces = workspaces[:limit]
+            next_cursor = self.cursor_encode(last_workspace)
+
+        return self.mapper.workspace_pagination_response_map(workspaces, next_cursor)
     
     async def create_workspace(self, data: WorkspaceCreate) -> WorkspaceResponse:
         workspace_data = self.mapper.workspace_create_map(data)
@@ -58,7 +71,11 @@ class WorkspaceService:
             workspace_id: UUID,
             data: WorkspaceUpdate,
     ) -> WorkspaceResponse:
-        workspace = await self._get_workspace_by_id(workspace_id)
+        workspace = await self.repository.get_workspace_for_update(workspace_id)
+
+        if workspace is None:
+            raise NotFoundError(f'Workspace with id={workspace_id} not found.')
+
         workspace = self.mapper.workspace_update_map(data, workspace)
 
         workspace = await self.repository.update_workspace(workspace)

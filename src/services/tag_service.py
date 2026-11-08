@@ -5,9 +5,10 @@ from src.schemas.tag import TagCreate, TagResponse, TagUpdate
 from src.models.tag import Tag
 from src.exceptions.general_errors import NotFoundError
 from src.mappers.tag_mapper import TagMapper
+from src.services.service import Service
 
 
-class TagService:
+class TagService(Service):
     def __init__(
             self, 
             repository: TagRepository,
@@ -42,7 +43,11 @@ class TagService:
             tag_id: UUID,
             data: TagUpdate,
     ) -> TagResponse:
-        tag = await self._get_tag_by_id(tag_id)
+        tag = await self.repository.get_tag_for_update(tag_id)
+
+        if tag is None:
+            raise NotFoundError(f'Tag with id={tag_id} not found.')
+
         tag_update = self.mapper.tag_update_map(data, tag)
         tag = await self.repository.update_tag(tag_update)
         tag = self.mapper.tag_response_map(tag)

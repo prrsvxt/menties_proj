@@ -5,10 +5,13 @@ from uuid import UUID
 from datetime import datetime, timezone
 
 from src.models.users import UserModel
+from src.repositories.repository import Repository
 
-class UserRepository:
+class UserRepository(Repository):
+    LOCK_NAMESPACE = 'user'
+
     def __init__(self, db: AsyncSession):
-        self.session = db
+        super().__init__(db)
 
     async def get_user_by_id(self, user_id: UUID) -> UserModel | None:
         stmt = (
@@ -22,6 +25,13 @@ class UserRepository:
         result = await self.session.execute(stmt)
         result = result.scalar_one_or_none()
         return result
+
+    async def get_user_for_update(self, user_id: UUID) -> UserModel | None:
+        lock_id = self.get_lock_key(self.LOCK_NAMESPACE, user_id)
+        await self.acquire_advisory_lock(lock_id)
+
+        user = await self.get_user_by_id(user_id)
+        return user
     
     async def create_user(self, user: UserModel) -> UserModel:
         self.session.add(user)
