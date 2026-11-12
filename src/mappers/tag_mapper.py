@@ -1,10 +1,13 @@
 from src.models.tag import Tag
-from src.schemas.tag import TagResponse, TagUpdate, TagCreate
+from src.schemas.tag import TagResponse, TagUpdate, TagCreate, TagFullResponse
 
 
 class TagMapper:
     def tag_response_map(self, tag: Tag) -> TagResponse:
         return TagResponse.model_validate(tag, extra='ignore')
+
+    def tag_full_response_map(self, tag: Tag) -> TagFullResponse:
+        return TagFullResponse.model_validate(tag, extra='ignore')
 
     def tag_create_map(self, data: TagCreate) -> Tag:
         return Tag(**data.model_dump())

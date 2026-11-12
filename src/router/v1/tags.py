@@ -6,7 +6,7 @@ from src.dependencies.tag_deps import (
     GetTagService,
     TransactionalTagService,
 )
-from src.schemas.tag import TagCreate, TagResponse, TagUpdate
+from src.schemas.tag import TagCreate, TagResponse, TagUpdate, TagFullResponse
 
 
 router = APIRouter(
@@ -17,7 +17,7 @@ router = APIRouter(
 
 @router.get(
     '/{tag_id}',
-    response_model=TagResponse,
+    response_model=TagFullResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tag_by_id(

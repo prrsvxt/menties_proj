@@ -86,7 +86,7 @@ class ProjectService(Service):
             project_id: UUID,
             data: ProjectUpdate
     ) -> ProjectResponse:
-        project = await self.project_repository.get_project_for_update(project_id)
+        project = await self.project_repository.get_project_with_lock(project_id)
 
         if project is None:
             raise NotFoundError(f'Project with ID={project_id} not found')

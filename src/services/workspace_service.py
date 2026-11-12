@@ -71,7 +71,7 @@ class WorkspaceService(Service):
             workspace_id: UUID,
             data: WorkspaceUpdate,
     ) -> WorkspaceResponse:
-        workspace = await self.repository.get_workspace_for_update(workspace_id)
+        workspace = await self.repository.get_workspace_with_lock(workspace_id)
 
         if workspace is None:
             raise NotFoundError(f'Workspace with id={workspace_id} not found.')

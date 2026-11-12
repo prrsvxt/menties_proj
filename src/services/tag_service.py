@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from src.repositories.tag_repository import TagRepository
-from src.schemas.tag import TagCreate, TagResponse, TagUpdate
+from src.schemas.tag import TagCreate, TagResponse, TagUpdate, TagFullResponse
 from src.models.tag import Tag
 from src.exceptions.general_errors import NotFoundError
 from src.mappers.tag_mapper import TagMapper
@@ -25,9 +25,9 @@ class TagService(Service):
 
         return tag
 
-    async def get_tag_by_id(self, tag_id: UUID) -> TagResponse:
+    async def get_tag_by_id(self, tag_id: UUID) -> TagFullResponse:
         tag = await self._get_tag_by_id(tag_id)
-        return self.mapper.tag_response_map(tag)
+        return self.mapper.tag_full_response_map(tag)
 
     async def create_tag(
             self,
@@ -43,7 +43,7 @@ class TagService(Service):
             tag_id: UUID,
             data: TagUpdate,
     ) -> TagResponse:
-        tag = await self.repository.get_tag_for_update(tag_id)
+        tag = await self.repository.get_tag_with_lock(tag_id)
 
         if tag is None:
             raise NotFoundError(f'Tag with id={tag_id} not found.')

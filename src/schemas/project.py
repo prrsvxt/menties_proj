@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from src.models.enums.project_status import ProjectStatus
 from src.schemas.tag import TagResponse
+from src.schemas.project_short import ProjectShortResponse
 
 
 class ProjectCreate(BaseModel):
@@ -21,16 +22,8 @@ class ProjectUpdate(BaseModel):
     status: ProjectStatus | None = None
     tag_ids: list[UUID] | None = None
 
-
-class ProjectResponse(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    description: str
-    status: ProjectStatus
+class ProjectResponse(ProjectShortResponse):
     tags: list[TagResponse] = Field(default_factory=list)
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectPaginationResponse(BaseModel):

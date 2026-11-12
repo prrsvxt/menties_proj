@@ -46,7 +46,6 @@ class WorkspaceMapper:
     ) -> WorkspaceSettingsModel:
         return WorkspaceSettingsModel(**data.model_dump())
 
-    # получить объект из модели, преобразовать его в схему.
     def workspace_response_map(self, data: WorkspaceModel) -> WorkspaceResponse:
         return WorkspaceResponse.model_validate(data, from_attributes=True)
 

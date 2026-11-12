@@ -26,7 +26,7 @@ class WorkspaceRepository(Repository):
         result = (await self.session.execute(stmt)).scalar_one_or_none()
         return result
 
-    async def get_workspace_for_update(
+    async def get_workspace_with_lock(
             self,
             workspace_id: UUID,
     ) -> WorkspaceModel | None:
@@ -92,6 +92,7 @@ class WorkspaceRepository(Repository):
             self,
             workspace: WorkspaceModel
     ) -> WorkspaceModel:
+        self.session.add(workspace)
         await self.session.flush()
 
         return workspace

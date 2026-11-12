@@ -32,7 +32,7 @@ class ProjectRepository(Repository):
 
         return result
 
-    async def get_project_for_update(self, project_id: UUID) -> Project | None:
+    async def get_project_with_lock(self, project_id: UUID) -> Project | None:
         lock_id = self.get_lock_key(self.LOCK_NAMESPACE, project_id)
         await self.acquire_advisory_lock(lock_id)
 
@@ -123,6 +123,7 @@ class ProjectRepository(Repository):
         return project
 
     async def update_project(self, project: Project) -> Project:
+        self.session.add(project)
         await self.session.flush()
         return project
 

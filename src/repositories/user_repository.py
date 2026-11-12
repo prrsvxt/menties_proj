@@ -26,7 +26,7 @@ class UserRepository(Repository):
         result = result.scalar_one_or_none()
         return result
 
-    async def get_user_for_update(self, user_id: UUID) -> UserModel | None:
+    async def get_user_with_lock(self, user_id: UUID) -> UserModel | None:
         lock_id = self.get_lock_key(self.LOCK_NAMESPACE, user_id)
         await self.acquire_advisory_lock(lock_id)
 
@@ -50,6 +50,7 @@ class UserRepository(Repository):
         await self.session.flush()
 
     async def update_user(self, user: UserModel) -> UserModel:
+        self.session.add(user)
         await self.session.flush()
 
         return user

@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import selectinload, with_loader_criteria
 from sqlalchemy import select
 from datetime import datetime, timezone
 from uuid import UUID
 
 from src.repositories.repository import Repository
+from src.models.project import Project
 from src.models.tag import Tag
 
 
@@ -15,14 +17,18 @@ class TagRepository(Repository):
         super().__init__(db)
 
     async def get_tag_by_id(self, tag_id: UUID) -> Tag | None:
-        # здесь я не использую selectinload, потому что в TagResponse не добавляем вообще Projects,
-        # т.к. в таком случае могут быть слишком тяжёлые ответы. 
-        # надо будет - добавлю отдельную схему, и отдельный запрос.
-        stmt = select(Tag).where(Tag.id == tag_id, Tag.deleted_at.is_(None))
+        stmt = (
+            select(Tag)
+            .options(
+                selectinload(Tag.projects),
+                with_loader_criteria(Project, Project.deleted_at.is_(None))
+            )
+            .where(Tag.id == tag_id, Tag.deleted_at.is_(None))
+        )
         result = (await self.session.execute(stmt)).scalar_one_or_none()
         return result
 
-    async def get_tag_for_update(self, tag_id: UUID) -> Tag | None:
+    async def get_tag_with_lock(self, tag_id: UUID) -> Tag | None:
         lock_id = self.get_lock_key(self.LOCK_NAMESPACE, tag_id)
         await self.acquire_advisory_lock(lock_id)
 
@@ -53,6 +59,7 @@ class TagRepository(Repository):
         return tag
 
     async def update_tag(self, tag: Tag) -> Tag:
+        self.session.add(tag)
         await self.session.flush()
         return tag
 
