@@ -1,10 +1,9 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.enums.project_status import ProjectStatus
-from src.schemas.tag import TagResponse
-from src.schemas.project_short import ProjectShortResponse
+from src.schemas.tag import TagResponse, TagCreate
 
 
 class ProjectCreate(BaseModel):
@@ -12,7 +11,7 @@ class ProjectCreate(BaseModel):
     slug: str = Field(min_length=5, max_length=150)
     description: str = Field(max_length=500)
     status: ProjectStatus = Field(default=ProjectStatus.DRAFT)
-    tag_ids: list[UUID] = Field(default_factory=list)
+    tags: list[TagCreate] = Field(default_factory=list)
 
 
 class ProjectUpdate(BaseModel):
@@ -20,10 +19,17 @@ class ProjectUpdate(BaseModel):
     slug: str | None = Field(default=None, min_length=5, max_length=150)
     description: str | None = Field(default=None, max_length=500)
     status: ProjectStatus | None = None
-    tag_ids: list[UUID] | None = None
+    tags: list[TagCreate] | None = None
 
-class ProjectResponse(ProjectShortResponse):
+class ProjectResponse(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    description: str
+    status: ProjectStatus
     tags: list[TagResponse] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectPaginationResponse(BaseModel):

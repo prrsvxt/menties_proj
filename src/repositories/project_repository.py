@@ -80,6 +80,36 @@ class ProjectRepository(Repository):
 
         return result
 
+    async def _get_or_create_tags(self, tags: list[Tag]) -> list[Tag]:
+
+        if not tags:
+            return []
+
+        for tag in tags:
+            tag_data = {
+                column.name: getattr(tag, column.name)
+                for column in tag.__table__.columns
+                if getattr(tag, column.name) is not None
+            }
+
+            create_tag = (
+                insert(Tag)
+                .values(tag_data)
+                .on_conflict_do_nothing()
+            )
+
+            await self.session.execute(create_tag)
+
+        tag_slugs = [tag.slug for tag in tags]
+
+        result = await self.session.execute(
+            select(Tag).where(
+                Tag.slug.in_(tag_slugs),
+                Tag.deleted_at.is_(None),
+            )
+        )
+        return result.scalars().all()
+
     async def create_project(self, project: Project) -> Project:
 
         values = {
@@ -101,12 +131,14 @@ class ProjectRepository(Repository):
             raise ConflictError(f'Project with slug={project.slug} already exists')
 
         if project.tags:
+            persisted_tags = await self._get_or_create_tags(project.tags)
+
             tag_links = [
                 {
                     'project_id': project_id,
                     'tag_id': tag.id
                 }
-                for tag in project.tags
+                for tag in persisted_tags
             ]
 
             tags_insert = (
@@ -122,7 +154,14 @@ class ProjectRepository(Repository):
         project = await self.get_project_by_id(project_id)
         return project
 
-    async def update_project(self, project: Project) -> Project:
+    async def update_project(
+            self,
+            project: Project,
+            tags: list[Tag] | None,
+    ) -> Project:
+        if tags is not None:
+            project.tags = await self._get_or_create_tags(tags)
+
         self.session.add(project)
         await self.session.flush()
         return project

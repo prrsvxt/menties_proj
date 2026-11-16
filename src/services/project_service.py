@@ -8,7 +8,6 @@ from src.schemas.project import (
     ProjectUpdate,
 )
 from src.repositories.project_repository import ProjectRepository
-from src.repositories.tag_repository import TagRepository
 from src.mappers.project_mapper import ProjectMapper
 from src.models.project import Project
 from src.exceptions.general_errors import NotFoundError
@@ -21,11 +20,9 @@ class ProjectService(Service):
     def __init__(
             self, 
             project_repository: ProjectRepository, 
-            tag_repository: TagRepository,
             mapper: ProjectMapper
         ):
         self.project_repository = project_repository
-        self.tag_repository = tag_repository
         self.mapper = mapper
 
     async def _get_project_by_id(
@@ -76,8 +73,7 @@ class ProjectService(Service):
             self,
             data: ProjectCreate
     ) -> ProjectResponse:
-        tags = await self.tag_repository.get_tags_by_ids(data.tag_ids)
-        project_model = self.mapper.project_create_map(data, tags)
+        project_model = self.mapper.project_create_map(data)
         project = await self.project_repository.create_project(project_model)
         return self.mapper.project_response_map(project)
 
@@ -91,13 +87,8 @@ class ProjectService(Service):
         if project is None:
             raise NotFoundError(f'Project with ID={project_id} not found')
 
-        if data.tag_ids is None:
-            tags = project.tags
-        else:
-            tags = await self.tag_repository.get_tags_by_ids(data.tag_ids)
-
-        project = self.mapper.project_update_map(data, tags, project)
-        project = await self.project_repository.update_project(project)
+        project, tags = self.mapper.project_update_map(data, project)
+        project = await self.project_repository.update_project(project, tags)
         return self.mapper.project_response_map(project)
 
     async def delete_project(

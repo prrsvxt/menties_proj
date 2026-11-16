@@ -12,10 +12,12 @@ class ProjectMapper:
     def project_create_map(
             self, 
             data: ProjectCreate,
-            tags: list[Tag]
     ) -> Project:
+
+        tags = [Tag(**tag.model_dump()) for tag in data.tags]
+        
         return Project(
-            **data.model_dump(exclude={'tag_ids'}),
+            **data.model_dump(exclude={'tags'}),
             tags=tags
         )
 
@@ -28,19 +30,22 @@ class ProjectMapper:
     def project_update_map(
             self,
             data: ProjectUpdate,
-            tags: list[Tag],
             project: Project
-    ) -> Project:
+    ) -> tuple[Project, list[Tag] | None]:
         update_project = data.model_dump(
             exclude_unset=True,
-            exclude={'tag_ids'}
+            exclude={'tags'}
         )
 
         for field, value in update_project.items():
             setattr(project, field, value)
 
-        project.tags = tags
-        return project
+        tags = None
+
+        if data.tags is not None:
+            tags = [Tag(**tag.model_dump()) for tag in data.tags]
+
+        return project, tags
 
     def multiple_projects_response_map(
             self,
