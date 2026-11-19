@@ -25,8 +25,12 @@ async def validation_error_handler(
                 str(exc)
             )
 
+            context = error.get('ctx', {})
+            original_error = context.get('error')
+            detail = str(original_error or error.get('msg'))
+
             content = ErrorResponse(
-                detail='Invalid timezone'
+                detail=detail
             )
 
             return JSONResponse(

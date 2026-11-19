@@ -80,10 +80,7 @@ class ProjectRepository(Repository):
 
         return result
 
-    async def _get_or_create_tags(self, tags: list[Tag]) -> list[Tag]:
-
-        if not tags:
-            return []
+    async def _insert_tags(self, tags: list[Tag]) -> None:
 
         for tag in tags:
             tag_data = {
@@ -100,8 +97,7 @@ class ProjectRepository(Repository):
 
             await self.session.execute(create_tag)
 
-        tag_slugs = [tag.slug for tag in tags]
-
+    async def _get_tags_by_slugs(self, tag_slugs: list[str]) -> list[Tag]:
         result = await self.session.execute(
             select(Tag).where(
                 Tag.slug.in_(tag_slugs),
@@ -131,7 +127,9 @@ class ProjectRepository(Repository):
             raise ConflictError(f'Project with slug={project.slug} already exists')
 
         if project.tags:
-            persisted_tags = await self._get_or_create_tags(project.tags)
+            await self._insert_tags(project.tags)
+            tag_slugs = [tag.slug for tag in project.tags]
+            persisted_tags = await self._get_tags_by_slugs(tag_slugs)
 
             tag_links = [
                 {
@@ -160,7 +158,12 @@ class ProjectRepository(Repository):
             tags: list[Tag] | None,
     ) -> Project:
         if tags is not None:
-            project.tags = await self._get_or_create_tags(tags)
+            if tags:
+                await self._insert_tags(tags)
+                tag_slugs = [tag.slug for tag in tags]
+                project.tags = await self._get_tags_by_slugs(tag_slugs)
+            else:
+                project.tags = []
 
         self.session.add(project)
         await self.session.flush()

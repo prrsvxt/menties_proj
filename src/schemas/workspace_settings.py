@@ -14,8 +14,10 @@ class WorkspaceSettingsCreate(BaseModel):
     def timezone_validate(cls, value: str) -> str:
         try: 
             ZoneInfo(value)
-        except ZoneInfoNotFoundError:
-            raise InvalidTimezoneError
+        except ZoneInfoNotFoundError as exc:
+            raise InvalidTimezoneError(
+                f'Invalid timezone: {value}'
+            ) from exc
         return value
 
 
@@ -32,8 +34,10 @@ class WorkspaceSettingsUpdate(BaseModel):
 
         try:
             ZoneInfo(value)
-        except ZoneInfoNotFoundError:
-            raise InvalidTimezoneError
+        except ZoneInfoNotFoundError as exc:
+            raise InvalidTimezoneError(
+                f'Invalid Timezone: {value}'
+            ) from exc
         return value
 
 
