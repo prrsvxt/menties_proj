@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.enums.workspace_status import WorkspaceStatus
@@ -24,6 +26,7 @@ class WorkspaceUpdate(BaseModel):
     workspace_settings: WorkspaceSettingsUpdate | None = None
 
 class WorkspaceResponse(BaseModel):
+    id: UUID
     name: str
     slug: str
     description: str

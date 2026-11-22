@@ -6,6 +6,8 @@ from src.services.user_service import UserService
 from src.repositories.user_repository import UserRepository
 from src.db import get_session, get_transactional_session
 from src.mappers.user_mapper import UserMapper
+from src.cache.redis_cache import RedisCache
+from src.dependencies.cache_deps import get_redis
 
 
 def get_user_mapper() -> UserMapper:
@@ -23,16 +25,18 @@ def get_transactional_user_repository(
 
 def get_user_service(
     repository: UserRepository = Depends(get_user_repository),
-    mapper: UserMapper = Depends(get_user_mapper)
+    mapper: UserMapper = Depends(get_user_mapper),
+    redis: RedisCache = Depends(get_redis),
 ) -> UserService:
-    return UserService(repository, mapper)
+    return UserService(repository, mapper, redis)
 
 
 def get_transactional_user_service(
     repository: UserRepository = Depends(get_transactional_user_repository),
-    mapper: UserMapper = Depends(get_user_mapper)
+    mapper: UserMapper = Depends(get_user_mapper),
+    redis: RedisCache = Depends(get_redis),
 ) -> UserService:
-    return UserService(repository, mapper)
+    return UserService(repository, mapper, redis)
 
 GetUserService = Annotated[
     UserService,

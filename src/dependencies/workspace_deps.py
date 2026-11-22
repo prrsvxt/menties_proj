@@ -7,6 +7,8 @@ from src.db import get_session, get_transactional_session
 from src.mappers.workspace_mapper import WorkspaceMapper
 from src.repositories.workspace_repository import WorkspaceRepository
 from src.services.workspace_service import WorkspaceService
+from src.cache.redis_cache import RedisCache
+from src.dependencies.cache_deps import get_redis
 
 
 def get_workspace_mapper() -> WorkspaceMapper:
@@ -28,8 +30,9 @@ def get_transactional_workspace_repository(
 def get_workspace_service(
         repository: WorkspaceRepository = Depends(get_workspace_repository),
         mapper: WorkspaceMapper = Depends(get_workspace_mapper),
+        redis: RedisCache = Depends(get_redis),
 ) -> WorkspaceService:
-    return WorkspaceService(repository, mapper)
+    return WorkspaceService(repository, mapper, redis)
 
 
 def get_transactional_workspace_service(
@@ -37,8 +40,9 @@ def get_transactional_workspace_service(
             get_transactional_workspace_repository,
         ),
         mapper: WorkspaceMapper = Depends(get_workspace_mapper),
+        redis: RedisCache = Depends(get_redis),
 ) -> WorkspaceService:
-    return WorkspaceService(repository, mapper)
+    return WorkspaceService(repository, mapper, redis)
 
 
 GetWorkspaceService = Annotated[

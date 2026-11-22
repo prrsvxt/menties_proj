@@ -13,6 +13,13 @@ services:
       timeout: 5s
       retries: 10
   
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass abacaba
+
   migrations:
     build:
       context: .
@@ -34,5 +41,7 @@ services:
     depends_on:
       migrations:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     ports:
       - 8000:8000
