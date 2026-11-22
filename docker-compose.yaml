@@ -19,6 +19,11 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --requirepass abacaba
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "abacaba", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   migrations:
     build:

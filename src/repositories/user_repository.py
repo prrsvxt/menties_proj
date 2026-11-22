@@ -52,5 +52,9 @@ class UserRepository(Repository):
     async def update_user(self, user: UserModel) -> UserModel:
         self.session.add(user)
         await self.session.flush()
+        await self.session.refresh(
+            user,
+            attribute_names=['updated_at', 'access_granted'],
+        )
 
         return user
