@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from uuid import UUID
 
-from src.dependencies.users_deps import GetUserService, TransactionalUserService
+from src.dependencies.users_deps import GetUserService
 from src.schemas.user import UserResponse, UserCreate, UserUpdate
 
 
@@ -20,14 +20,14 @@ async def get_user_by_id(
 @router.post('/', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     data: UserCreate,
-    service: TransactionalUserService
+    service: GetUserService
 ):
     return await service.create_user(data=data)
 
 @router.delete('/{user_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
-    service: TransactionalUserService
+    service: GetUserService
 ):
     await service.delete_user(user_id=user_id)
 
@@ -35,7 +35,7 @@ async def delete_user(
 async def update_user(
     user_id: UUID,
     data: UserUpdate,
-    service: TransactionalUserService
+    service: GetUserService
 ):
     return await service.update_user(
         user_id=user_id,

@@ -4,7 +4,6 @@ from fastapi import APIRouter, Query, status
 
 from src.dependencies.project_deps import (
     GetProjectService,
-    TransactionalProjectService,
 )
 from src.schemas.project import (
     ProjectCreate,
@@ -51,7 +50,7 @@ async def get_project_by_id(
 )
 async def create_project(
         data: ProjectCreate,
-        service: TransactionalProjectService,
+        service: GetProjectService,
 ):
     return await service.create_project(data)
 
@@ -64,7 +63,7 @@ async def create_project(
 async def update_project(
         project_id: UUID,
         data: ProjectUpdate,
-        service: TransactionalProjectService,
+        service: GetProjectService,
 ):
     return await service.update_project(project_id, data)
 
@@ -75,6 +74,6 @@ async def update_project(
 )
 async def delete_project(
         project_id: UUID,
-        service: TransactionalProjectService,
+        service: GetProjectService,
 ):
     await service.delete_project(project_id)

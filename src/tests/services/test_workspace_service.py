@@ -3,15 +3,15 @@ import pytest_asyncio
 from uuid import uuid4
 
 from src.services.workspace_service import WorkspaceService
+from src.UoW.workspace_UoW import WorkspaceUoW
 from src.repositories.workspace_repository import WorkspaceRepository
 from src.mappers.workspace_mapper import WorkspaceMapper
-from src.schemas.workspace import WorkspaceCreate, WorkspaceUpdate
+from src.schemas.workspace import WorkspaceCreate, WorkspaceUpdate, WorkspaceResponse
 from src.schemas.workspace_settings import (
     WorkspaceSettingsCreate,
     WorkspaceSettingsUpdate,
 )
 from src.models.enums.workspace_status import WorkspaceStatus
-from src.cache.keys import workspace_key, WORKSPACES_LIST_VERSION_KEY, workspace_list_version
 from src.exceptions.general_errors import NotFoundError
 
 
@@ -41,10 +41,10 @@ async def create_workspaces(
 
 
 @pytest_asyncio.fixture(scope='function', loop_scope='function')
-async def workspace_service(async_session, redis_cache):
-    workspace_repository = WorkspaceRepository(async_session)
+async def workspace_service(session_factory, redis_cache):
+    unit_of_work = WorkspaceUoW(session_factory)
     mapper = WorkspaceMapper()
-    workspace_service = WorkspaceService(workspace_repository, mapper, redis_cache)
+    workspace_service = WorkspaceService(unit_of_work, mapper, redis_cache)
 
     return workspace_service
 
@@ -69,13 +69,17 @@ async def test_workspace_by_id(workspace_service, async_session, redis_cache):
 
     await workspace_service.get_workspace_by_id(workspace.id)
     
-    assert (await redis_cache.get(workspace_key(workspace.id))) is not None
+    assert (await redis_cache.get(
+        WorkspaceService.workspace_key(workspace.id)
+    )) is not None
 
     workspace_model = await workspace_repository.get_workspace_by_id(workspace.id)
     assert workspace_model is not None
 
     await workspace_repository.delete_workspace(workspace_model)
-    assert (await redis_cache.get(workspace_key(workspace.id))) is not None  
+    assert (await redis_cache.get(
+        WorkspaceService.workspace_key(workspace.id)
+    )) is not None  
 
 
 @pytest.mark.asyncio
@@ -86,7 +90,7 @@ async def test_workspace_not_found(workspace_service):
 
 
 @pytest.mark.asyncio
-async def test_workspace_settings(workspace_service):
+async def test_workspace_settings(workspace_service, redis_cache):
     workspace_data = WorkspaceCreate(
         name='workspace settings',
         slug='workspace-settings',
@@ -121,12 +125,21 @@ async def test_workspace_settings(workspace_service):
     assert updated_workspace.workspace_settings.language == 'en'
     assert updated_workspace.workspace_settings.notifications_enabled is False
 
+    cached_workspace = await redis_cache.get(
+        WorkspaceService.workspace_key(workspace.id)
+    )
+
+    assert cached_workspace is not None
+    assert WorkspaceResponse.model_validate_json(cached_workspace) == updated_workspace
+
 
 @pytest.mark.asyncio
 async def test_pagination_cache_miss(workspace_service, redis_cache):
     workspaces = await create_workspaces(workspace_service)
 
-    cache_version = await redis_cache.get(WORKSPACES_LIST_VERSION_KEY)
+    cache_version = await redis_cache.get(
+        WorkspaceService.WORKSPACES_LIST_VERSION_KEY
+    )
     assert cache_version is not None
 
     pagination_response = await workspace_service.list_workspaces(limit=2, cursor=None)
@@ -145,11 +158,19 @@ async def test_pagination_cache_hit(workspace_service, async_session, redis_cach
     workspace_repository = WorkspaceRepository(async_session)
     workspaces = await create_workspaces(workspace_service)
 
-    cache_version = await redis_cache.get(WORKSPACES_LIST_VERSION_KEY)
+    cache_version = await redis_cache.get(
+        WorkspaceService.WORKSPACES_LIST_VERSION_KEY
+    )
     assert cache_version is not None
 
     first_page = await workspace_service.list_workspaces(limit=2, cursor=None)
-    assert redis_cache.get(workspace_list_version(cache_version, limit=2, cursor=None)) is not None
+    assert await redis_cache.get(
+        WorkspaceService.workspace_list_version(
+            cache_version,
+            limit=2,
+            cursor=None,
+        )
+    ) is not None
 
     for workspace in workspaces:
         workspace_model = await workspace_repository.get_workspace_by_id(
@@ -159,7 +180,13 @@ async def test_pagination_cache_hit(workspace_service, async_session, redis_cach
         await workspace_repository.delete_workspace(workspace_model)
 
     assert first_page == (await workspace_service.list_workspaces(limit=2, cursor=None))
-    assert redis_cache.get(workspace_list_version(cache_version, limit=2, cursor=None)) is not None
+    assert await redis_cache.get(
+        WorkspaceService.workspace_list_version(
+            cache_version,
+            limit=2,
+            cursor=None,
+        )
+    ) is not None
 
 
 @pytest.mark.asyncio
@@ -169,13 +196,27 @@ async def test_different_cache_keys_for_pagination(workspace_service, redis_cach
     await workspace_service.list_workspaces(limit=2, cursor=None)
     await workspace_service.list_workspaces(limit=3, cursor=None)
 
-    cache_version = await redis_cache.get(WORKSPACES_LIST_VERSION_KEY)
+    cache_version = await redis_cache.get(
+        WorkspaceService.WORKSPACES_LIST_VERSION_KEY
+    )
     assert cache_version is not None
 
     assert (
-        (await redis_cache.get(workspace_list_version(cache_version, limit=2, cursor=None))) 
+        (await redis_cache.get(
+            WorkspaceService.workspace_list_version(
+                cache_version,
+                limit=2,
+                cursor=None,
+            )
+        )) 
         != 
-        (await redis_cache.get(workspace_list_version(cache_version, limit=3, cursor=None)))
+        (await redis_cache.get(
+            WorkspaceService.workspace_list_version(
+                cache_version,
+                limit=3,
+                cursor=None,
+            )
+        ))
     )
 
 
@@ -198,4 +239,6 @@ async def test_cache_invalidation_after_delete(workspace_service, redis_cache):
     workspace_cache = await workspace_service.get_workspace_by_id(workspace.id)
     await workspace_service.delete_workspace(workspace.id)
 
-    assert await redis_cache.get(workspace_key(workspace.id)) is None
+    assert await redis_cache.get(
+        WorkspaceService.workspace_key(workspace.id)
+    ) is None

@@ -3,15 +3,11 @@ import pytest_asyncio
 from uuid import uuid4
 
 from src.services.project_service import ProjectService
+from src.UoW.project_UoW import ProjectUoW
 from src.repositories.project_repository import ProjectRepository
 from src.mappers.project_mapper import ProjectMapper
-from src.schemas.project import ProjectCreate, ProjectStatus, ProjectUpdate
+from src.schemas.project import ProjectCreate, ProjectStatus, ProjectUpdate, ProjectResponse
 from src.schemas.tag import TagCreate
-from src.cache.keys import (
-    PROJECTS_LIST_VERSION_KEY,
-    project_key,
-    project_list_version,
-)
 from src.exceptions.general_errors import NotFoundError
 
 
@@ -36,10 +32,10 @@ async def create_projects(
 
 
 @pytest_asyncio.fixture(scope='function', loop_scope='function')
-async def project_service(async_session, redis_cache) -> ProjectService:
-    project_repository = ProjectRepository(async_session)
+async def project_service(session_factory, redis_cache) -> ProjectService:
+    unit_of_work = ProjectUoW(session_factory)
     mapper = ProjectMapper()
-    project_service = ProjectService(project_repository, mapper, redis_cache)
+    project_service = ProjectService(unit_of_work, mapper, redis_cache)
 
     return project_service
 
@@ -62,7 +58,9 @@ async def test_get_project_by_id(
     test_project_get = await project_service.get_project_by_id(test_project.id)
     assert test_project_get == test_project
 
-    cached_value = await redis_cache.redis_client.get(project_key(test_project.id))
+    cached_value = await redis_cache.redis_client.get(
+        ProjectService.project_key(test_project.id)
+    )
     assert cached_value is not None
 
     project_model = await project_repository.get_project_by_id(test_project.id)
@@ -83,10 +81,10 @@ async def test_project_not_found(project_service):
 async def test_pagination_cache_miss(project_service, redis_cache):
     projects = await create_projects(project_service)
 
-    cache_version = await redis_cache.get(PROJECTS_LIST_VERSION_KEY)
+    cache_version = await redis_cache.get(ProjectService.PROJECTS_LIST_VERSION_KEY)
     assert cache_version is not None
 
-    cache_key = project_list_version(
+    cache_key = ProjectService.project_list_version(
         int(cache_version),
         limit=2,
         cursor=None,
@@ -158,19 +156,26 @@ async def test_invalidate_cache_after_update(project_service: ProjectService, re
     test_project = await project_service.create_project(test_project_create_schema)
     test_project_cached = await project_service.get_project_by_id(test_project.id)
 
-    assert await redis_cache.get(project_key(test_project_cached.id)) is not None 
+    assert await redis_cache.get(
+        ProjectService.project_key(test_project_cached.id)
+    ) is not None 
 
     test_project_update_schema = ProjectUpdate(
         name='updated_project',
         description='Updated description',
         status=ProjectStatus.DRAFT,
     )
-    await project_service.update_project(
+    updated_project = await project_service.update_project(
         test_project.id,
         test_project_update_schema,
     )
 
-    assert await redis_cache.get(project_key(test_project_cached.id)) is None  
+    cached_project = await redis_cache.get(
+        ProjectService.project_key(test_project_cached.id)
+    )
+
+    assert cached_project is not None
+    assert ProjectResponse.model_validate_json(cached_project) == updated_project
 
 
 @pytest.mark.asyncio
@@ -184,13 +189,17 @@ async def test_invalidate_cache_after_delete(project_service: ProjectService, re
     test_project = await project_service.create_project(test_project_create_schema)
     test_project_cached = await project_service.get_project_by_id(test_project.id)
 
-    assert await redis_cache.get(project_key(test_project_cached.id)) is not None 
+    assert await redis_cache.get(
+        ProjectService.project_key(test_project_cached.id)
+    ) is not None 
 
     await project_service.delete_project(
         test_project.id,
     )
 
-    assert await redis_cache.get(project_key(test_project_cached.id)) is None
+    assert await redis_cache.get(
+        ProjectService.project_key(test_project_cached.id)
+    ) is None
 
 
 @pytest.mark.asyncio
@@ -221,7 +230,7 @@ async def test_project_tags(project_service, redis_cache):
 
     assert len(project_get.tags) == 2
     assert [tag.slug for tag in project_get.tags] == ['python', 'backend']
-    assert await redis_cache.get(project_key(project.id)) is not None
+    assert await redis_cache.get(ProjectService.project_key(project.id)) is not None
 
     update_data = ProjectUpdate(
         tags=[
@@ -234,9 +243,12 @@ async def test_project_tags(project_service, redis_cache):
         ],
     )
 
-    await project_service.update_project(
+    updated_project = await project_service.update_project(
         project.id,
         update_data,
     )
 
-    assert await redis_cache.get(project_key(project.id)) is None
+    cached_project = await redis_cache.get(ProjectService.project_key(project.id))
+
+    assert cached_project is not None
+    assert ProjectResponse.model_validate_json(cached_project) == updated_project

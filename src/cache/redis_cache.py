@@ -1,4 +1,9 @@
 from redis import asyncio as redis
+from redis import RedisError
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 class RedisCache:
 
@@ -33,5 +38,17 @@ class RedisCache:
 
     async def close(self) -> None:
         await self.redis_client.aclose()
+
+    async def get_list_version(self, key: str) -> str | None:
+        try:
+            version = await self.get(key)
+            if version:
+                return version
+            await self.set(key, '1', nx=True, use_ttl=False)
+            return await self.get(key)
+        except RedisError:
+            logger.exception(f'Redis error occured at {__name__}, method: redis.get')
+            return None
+
 
     

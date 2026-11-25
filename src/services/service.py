@@ -6,10 +6,6 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 from src.cache.redis_cache import RedisCache
 
 class Service:
-
-    def __init__(self, redis: RedisCache):
-        self.redis = redis
-
     def cursor_decode(self, cursor: str) -> tuple[UUID, datetime]:
     
         cursor_decoded = json.loads(urlsafe_b64decode(cursor).decode())
