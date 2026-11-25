@@ -1,52 +1,31 @@
 from typing import Annotated
 
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, Request
 
-from src.db import get_session, get_transactional_session
 from src.mappers.workspace_mapper import WorkspaceMapper
-from src.repositories.workspace_repository import WorkspaceRepository
 from src.services.workspace_service import WorkspaceService
+from src.cache.redis_cache import RedisCache
+from src.dependencies.cache_deps import get_redis
+from src.UoW.workspace_UoW import WorkspaceUoW
 
 
 def get_workspace_mapper() -> WorkspaceMapper:
     return WorkspaceMapper()
 
-
-def get_workspace_repository(
-        db: AsyncSession = Depends(get_session),
-) -> WorkspaceRepository:
-    return WorkspaceRepository(db)
-
-
-def get_transactional_workspace_repository(
-        db: AsyncSession = Depends(get_transactional_session),
-) -> WorkspaceRepository:
-    return WorkspaceRepository(db)
+def get_workspace_uow(request: Request) -> WorkspaceUoW:
+    session_factory = request.app.state.session_factory
+    return WorkspaceUoW(session_factory)
 
 
 def get_workspace_service(
-        repository: WorkspaceRepository = Depends(get_workspace_repository),
+        unit_of_work: WorkspaceUoW = Depends(get_workspace_uow),
         mapper: WorkspaceMapper = Depends(get_workspace_mapper),
+        redis: RedisCache = Depends(get_redis),
 ) -> WorkspaceService:
-    return WorkspaceService(repository, mapper)
-
-
-def get_transactional_workspace_service(
-        repository: WorkspaceRepository = Depends(
-            get_transactional_workspace_repository,
-        ),
-        mapper: WorkspaceMapper = Depends(get_workspace_mapper),
-) -> WorkspaceService:
-    return WorkspaceService(repository, mapper)
+    return WorkspaceService(unit_of_work, mapper, redis)
 
 
 GetWorkspaceService = Annotated[
     WorkspaceService,
     Depends(get_workspace_service),
-]
-
-TransactionalWorkspaceService = Annotated[
-    WorkspaceService,
-    Depends(get_transactional_workspace_service),
 ]

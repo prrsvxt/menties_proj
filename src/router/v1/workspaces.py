@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, status
 from uuid import UUID
 
-from src.dependencies.workspace_deps import GetWorkspaceService, TransactionalWorkspaceService
+from src.dependencies.workspace_deps import GetWorkspaceService
 from src.schemas.workspace import (
     WorkspaceResponse, 
     WorkspaceCreate, 
@@ -47,7 +47,7 @@ async def get_workspace_by_id(
 )
 async def create_workspace(
     data: WorkspaceCreate,
-    service: TransactionalWorkspaceService
+    service: GetWorkspaceService
 ):
     workspace = await service.create_workspace(data)
 
@@ -61,7 +61,7 @@ async def create_workspace(
 async def update_workspace(
     workspace_id: UUID,
     data: WorkspaceUpdate,
-    service: TransactionalWorkspaceService
+    service: GetWorkspaceService
 ):
     return await service.update_workspace(
         workspace_id,
@@ -74,6 +74,6 @@ async def update_workspace(
 )
 async def delete_workspace(
     workspace_id: UUID,
-    service: TransactionalWorkspaceService
+    service: GetWorkspaceService
 ):
     await service.delete_workspace(workspace_id)

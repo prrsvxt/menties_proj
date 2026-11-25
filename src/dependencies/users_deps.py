@@ -1,45 +1,29 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from typing import Annotated
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.user_service import UserService
-from src.repositories.user_repository import UserRepository
-from src.db import get_session, get_transactional_session
 from src.mappers.user_mapper import UserMapper
+from src.cache.redis_cache import RedisCache
+from src.dependencies.cache_deps import get_redis
+from src.UoW.user_UoW import UserUoW
 
 
 def get_user_mapper() -> UserMapper:
     return UserMapper()
 
-def get_user_repository(
-    db: AsyncSession = Depends(get_session),
-) -> UserRepository:
-    return UserRepository(db)
-
-def get_transactional_user_repository(
-    db: AsyncSession = Depends(get_transactional_session),
-) -> UserRepository:
-    return UserRepository(db)
+def get_user_unit_of_work(request: Request) -> UserUoW:
+    session_factory = request.app.state.session_factory
+    return UserUoW(session_factory)
 
 def get_user_service(
-    repository: UserRepository = Depends(get_user_repository),
-    mapper: UserMapper = Depends(get_user_mapper)
+    unit_of_work: UserUoW = Depends(get_user_unit_of_work),
+    mapper: UserMapper = Depends(get_user_mapper),
+    redis: RedisCache = Depends(get_redis),
 ) -> UserService:
-    return UserService(repository, mapper)
+    return UserService(unit_of_work, mapper, redis)
 
-
-def get_transactional_user_service(
-    repository: UserRepository = Depends(get_transactional_user_repository),
-    mapper: UserMapper = Depends(get_user_mapper)
-) -> UserService:
-    return UserService(repository, mapper)
 
 GetUserService = Annotated[
     UserService,
     Depends(get_user_service),
-]
-
-TransactionalUserService = Annotated[
-    UserService,
-    Depends(get_transactional_user_service),
 ]
